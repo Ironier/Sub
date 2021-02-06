@@ -1,0 +1,13 @@
+#ifndef ERROR_ENUM_H
+#define ERROR_ENUM_H
+
+
+enum
+{
+    ERROR_PASS = 0,
+    ERROR_UNFORMATTED_INPUT,
+    ERROR_INADEQUATE_EQU,
+    ERROR_SEGMENTATION_FAULT
+};
+
+#endif // ERROR_ENUM_H
