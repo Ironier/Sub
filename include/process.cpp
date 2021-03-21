@@ -11,8 +11,8 @@ using namespace std;
 #define is_digit(x) ('0' <= x && x <= '9')
 #define is_word(x) (('a' <= x && x <= 'z') || ('A' <= x && x <= 'Z'))
 
-template <>
-void StreamProcessor<double>::Process(iostream *_stream)
+template <typename _Type>
+void StreamProcessor<_Type>::Process(iostream *_stream)
 {
     variable_name.clear();
     matrix.clear();
@@ -27,8 +27,8 @@ void StreamProcessor<double>::Process(iostream *_stream)
 
     char c;
     string buffer;
-    double _temp_line_constant;
-    vector<double> _temp_column, _temp_line_coefficient;
+    _Type _temp_line_constant;
+    vector<_Type> _temp_column, _temp_line_coefficient;
 
     bool isReadingVariable = false, isReadingNumeral = false;
 
@@ -74,8 +74,7 @@ void StreamProcessor<double>::Process(iostream *_stream)
 
                 if (c == '=')
                 {
-                    Propos_Com_Variables(&proposition, &_temp_line_coefficient);
-                    Propos_Com_Constant(&proposition, &_temp_line_constant);
+                    Propos_Com_Variables(&proposition, &_temp_line_coefficient, &_temp_line_constant);
                     continue;
                 }
 
@@ -99,7 +98,7 @@ void StreamProcessor<double>::Process(iostream *_stream)
 
                 if (isReadingNumeral)
                 {
-                    proposition.push_back(Data(-1, stod(buffer)));
+                    proposition.push_back(Data(-proposition.size(), stod(buffer)));
                     buffer = "";
                 }
 
@@ -108,13 +107,10 @@ void StreamProcessor<double>::Process(iostream *_stream)
                     if (varialbes_map.find(buffer) == varialbes_map.end())
                     {
                         varialbes_map[buffer] = curSize;
-                        proposition.push_back(Data(curSize++, 1.0));
                         variable_name.push_back(buffer);
                     }
-                    else
-                    {
-                        proposition.push_back(Data(varialbes_map[buffer], 1.0));
-                    }
+                    proposition.push_back(Data(proposition.size(), 1.0));
+                        
                     buffer = "";
                 }
 
@@ -149,8 +145,8 @@ void StreamProcessor<double>::Process(iostream *_stream)
         matrix[i].push_back(_temp_column[i]);
     }
 }
-template <>
-void StreamProcessor<double>::Propos_Com_Variables(vector<Data> *_pros, vector<double> *_output)
+template <typename _Type>
+void StreamProcessor<_Type>::Propos_Com_Variables(vector<Data> *_pros, vector< _Type> *_output, _Type) 
 {
     stack<Data> s;
     int _max = _pros->size();
@@ -186,18 +182,9 @@ void StreamProcessor<double>::Propos_Com_Variables(vector<Data> *_pros, vector<d
     }
 }
 
-template <>
-void StreamProcessor<double>::Propos_Com_Constant(vector<Data> *_pros, double *_output)
-{
-    stack<Data> s;
-    int _max = _pros->size();
-    for (int i = 0; i < _max; ++i)
-    {
-    }
-}
 
-template <>
-int StreamProcessor<double>::isp(const char &_c) const
+template <typename _Type>
+int StreamProcessor<_Type>::isp(const char &_c) const
 {
     switch (_c)
     {
@@ -216,8 +203,8 @@ int StreamProcessor<double>::isp(const char &_c) const
     }
     return -1;
 }
-template <>
-int StreamProcessor<double>::icp(const char &_c) const
+template <typename _Type>
+int StreamProcessor<_Type>::icp(const char &_c) const
 {
     switch (_c)
     {
