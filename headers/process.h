@@ -13,12 +13,27 @@ private:
     class Data
     {
     public:
-        int _index = -1; // >0=> this is a variable;(INT_MIN<_index<-0) this is a constant; INT_MIN =>this is a operation
+        int _index = -1; // >0 => this is a variable;(_index<0) this is a constant; 0 =>this is a operation
         _Type _value;
         vector<int> *neighborTable = nullptr;
         Data() = default;
         Data(const _Type &_x) : _index(-1), _value(_x), neighborTable(nullptr){};
         Data(int _id, const _Type &_x) : _index(_id), _value(_x), neighborTable(nullptr){};
+        ~Data()
+        {
+        }
+        inline void clear_table()
+        {
+            if (neighborTable)
+                delete neighborTable;
+            neighborTable = nullptr;
+        }
+        inline void push_index(Data &obj, int x)
+        {
+            if (neighborTable == nullptr)
+                neighborTable = new vector<int>();
+            neighborTable->push_back(x);
+        }
     };
     int isp(const char &) const;
     int icp(const char &) const;
