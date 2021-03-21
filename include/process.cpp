@@ -74,6 +74,7 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
 
                 if (c == '=')
                 {
+                    _temp_line_coefficient.resize(curSize, 0);
                     Propos_Com_Variables(&proposition, &_temp_line_coefficient, &_temp_line_constant);
                     continue;
                 }
@@ -98,7 +99,7 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
 
                 if (isReadingNumeral)
                 {
-                    proposition.push_back(Data(-proposition.size() - 1, stod(buffer)));
+                    proposition.push_back(Data(- 1, stod(buffer)));
                     buffer = "";
                 }
 
@@ -106,10 +107,10 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
                 {
                     if (varialbes_map.find(buffer) == varialbes_map.end())
                     {
-                        varialbes_map[buffer] = curSize;
+                        varialbes_map[buffer] = curSize++;
                         variable_name.push_back(buffer);
                     }
-                    proposition.push_back(Data(proposition.size() + 1, 1.0));
+                    proposition.push_back(Data(varialbes_map[buffer], 1.0));
 
                     buffer = "";
                 }
@@ -119,7 +120,7 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
 
                 while (isp(cOperators.top()) > tempPriority)
                 {
-                    proposition.push_back(Data(0, (double)(cOperators.top())));
+                    proposition.push_back(Data(-2, (double)(cOperators.top())));
                     cOperators.pop();
                 }
 
@@ -140,8 +141,7 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
         throw GLOBAL_ERROR_INCORRECT_NUMBER_OF_EQUATION;
     for (int i = 0; i < curSize; ++i)
     {
-        for (int j = matrix[i].size(); j < curSize; ++j)
-            matrix[i].push_back(0);
+        matrix[i].resize(curSize, 0);
         matrix[i].push_back(_temp_column[i]);
     }
 }
@@ -149,100 +149,102 @@ template <typename _Type>
 void StreamProcessor<_Type>::Propos_Com_Variables(vector<Data> *_pros, vector<_Type> *_output, _Type *_output_constant)
 {
     //reckon _output_constant == 0.0
-    stack<Data> s;
+    stack<int> s;
     int _max = _pros->size();
     for (int i = 0; i < _max; ++i)
     {
-        if (_pros->operator[](i)._index != 0)
+        if (_pros->operator[](i)._index >=-1)
         {
-            s.push(_pros->operator[](i));
+            s.push(i);
         }
         else
         {
             static char c;
-            static Data tempA, tempB;
+            static int tempA, tempB;
+            static int tempA_index, tempB_index;
             tempB = s.top();
             s.pop();
             tempA = s.top();
             s.pop();
+            tempA_index = _pros->operator[](tempA)._index;
+            tempB_index = _pros->operator[](tempB)._index;
             c = 2 - _pros->operator[](i)._index;
             switch (c)
             {
             case '+':
-                if (tempA._index == tempB._index)
+                if (tempA_index == tempB_index)
                 {
-                    tempA._value += tempB._value;
+                    _pros->operator[](tempA)._value += _pros->operator[](tempB)._value;
                     s.push(tempA);
                 }
-                else if (tempA._index < 0)
+                else if (tempA_index < 0)
                 {
-                    tempB.push_index(-tempA._index);
+                    _pros->operator[](tempB).push_index(tempA);
                     s.push(tempB);
                 }
                 else
                 {
-                    tempA.push_index(abs(tempB._index));
+                    _pros->operator[](tempA).push_index(tempB_index);
                     s.push(tempA);
                 }
                 break;
             case '-':
-                if (tempA._index == tempB._index)
+                if (tempA_index == tempB_index)
                 {
-                    tempA._value -= tempB._value;
+                    _pros->operator[](tempA)._value -= _pros->operator[](tempB)._value;
                     s.push(tempA);
                 }
-                else if (tempA._index < 0)
+                else if (tempA_index < 0)
                 {
-                    tempB._value = -tempB._value;
-                    tempB.push_index(-tempA._index);
+                    _pros->operator[](tempB)._value = -_pros->operator[](tempB)._value;
+                    _pros->operator[](tempB).push_index(tempA);
                     s.push(tempB);
                 }
                 else
                 {
-                    tempB._value = -tempB.value;
-                    tempA.push_index(abs(tempB._index));
+                    _pros->operator[](tempA).push_index(tempB_index);
                     s.push(tempA);
                 }
                 break;
             case '*':
-                if (tempA._index == tempB._index)
+                if (tempA_index == tempB_index)
                 {
-                    if (tempA._index > 0)
+                    if (tempA_index >= 0)
                         throw GLOBAL_ERROR_VARIABLE_TIMES_VARIABLE;
-                    tempA._value *= tempB._value;
+                    _pros->operator[](tempA)._value *= _pros->operator[](tempB)._value;
                     s.push(tempA);
                 }
-                else if (tempA._index < 0)
+                else if (tempA_index < 0)
                 {
-                    tempB._value *= tempA._value;
+                    _pros->operator[](tempB)._value *= _pros->operator[](tempA)._value;
                     s.push(tempB);
                 }
                 else
                 {
-                    if (tempB._index > 0)
+                    if (tempB_index >= 0)
                         throw GLOBAL_ERROR_VARIABLE_TIMES_VARIABLE;
-                    tempA._value *= tempB._value;
+                    _pros->operator[](tempA)._value *= _pros->operator[](tempB)._value;
                     s.push(tempA);
                 }
                 break;
             case '/':
-                if (tempA._index == tempB._index)
+                if (tempA_index == tempB_index)
                 {
-                    if (tempA._index > 0)
+                    if (tempA_index >= 0)
                         throw GLOBAL_ERROR_VARIABLE_TIMES_VARIABLE;
-                    tempA._value *= tempB._value;
+                    _pros->operator[](tempA)._value /= _pros->operator[](tempB)._value;
                     s.push(tempA);
                 }
-                else if (tempA._index < 0)
+                else if (tempA_index < 0)
                 {
-                    tempB._value *= tempA._value;
+                    _pros->operator[](tempB)._value /= _pros->operator[](tempA)._value;
                     s.push(tempB);
                 }
                 else
                 {
-                    if (tempB._index > 0)
+                    if (tempB_index >= 0)
                         throw GLOBAL_ERROR_VARIABLE_TIMES_VARIABLE;
-                    tempA._value *= tempB._value;
+                    _pros->operator[](tempA)._value /= _pros->operator[](tempB)._value;
                     s.push(tempA);
                 }
                 break;
@@ -250,10 +252,29 @@ void StreamProcessor<_Type>::Propos_Com_Variables(vector<Data> *_pros, vector<_T
         }
     }
     //get coefficient
-
-    //clear tables in s
-
-    //
+    static int ceil, id;
+    static double t;
+    while (s.size())
+    {
+        Data tempData = _pros->operator[](s.top());
+        s.pop();
+        t = tempData._value;
+        id = tempData._index;
+        if(id>=0)
+        {
+            _output[id] += t;
+            ceil = tempData.neighborTable->size();
+            for (int i = 0; i < _max;++i)
+            {
+                static int temp;
+                temp = tempData.neighborTable->operator[](i);
+                _pros->operator[](temp)._value *= t;
+                s.push(temp);
+            }
+        }
+        else
+            *_output_constant -= t;
+    }
 }
 
 template <typename _Type>

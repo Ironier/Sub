@@ -13,7 +13,7 @@ private:
     class Data
     {
     public:
-        int _index = -1; // >0 => this is a variable;(_index<0) this is a constant; 0 =>this is a operation
+        int _index = -1; // >0 => this is a variable;(_index == -1) => this is a constant; =-2 =>this is a operation
         _Type _value;
         vector<int> *neighborTable = nullptr;
         Data() = default;
@@ -21,6 +21,8 @@ private:
         Data(int _id, const _Type &_x) : _index(_id), _value(_x), neighborTable(nullptr){};
         ~Data()
         {
+            if(neighborTable)
+                delete neighborTable;
         }
         inline void clear_table()
         {
