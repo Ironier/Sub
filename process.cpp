@@ -1,10 +1,10 @@
-#include "../headers/process.h"
-#include "../headers/Standard_Output.h"
+#include "include/Standard_Output.h"
 
 #include <iostream>
 #include <vector>
 #include <stack>
 #include <unordered_map>
+#include <string>
 
 using namespace std;
 
@@ -25,13 +25,14 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
 
     vector<Data> proposition; // >=0? =>variable : <0? => (-proposition[i] - 1) is the original operation
 
-    char c;
+    char c = 0;
     string buffer;
     _Type _temp_line_constant;
     vector<_Type> _temp_column, _temp_line_coefficient;
 
     bool isReadingVariable = false, isReadingNumeral = false;
 
+    _stream->get(c);
     while (!_stream->eof() || c == '#')
     {
         if (is_word(c))
@@ -42,6 +43,7 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
             {
                 isReadingVariable = true;
             }
+            buffer += c;
         }
         else if (is_digit(c))
         {
@@ -50,57 +52,31 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
                 if (!isReadingVariable)
                     isReadingNumeral = true;
             }
+            buffer += c;
         }
         else
         {
             switch (c)
             {
             case '_':
-                if (isReadingVariable)
-                    break;
-                else
+                if (!isReadingVariable)
                     throw GLOBAL_ERROR_BAD_INPUT;
             case '.':
-                if (isReadingNumeral)
-                    break;
-                else
+                if (!isReadingNumeral)
                     throw GLOBAL_ERROR_BAD_INPUT;
+                buffer += c;
             case ' ':
             case '\t':
-                continue;
+                break;
             default:
                 /////////
                 int tempPriority = icp(c);
 
-                if (c == '=')
-                {
-                    _temp_line_coefficient.resize(curSize, 0);
-                    Propos_Com_Variables(&proposition, &_temp_line_coefficient, &_temp_line_constant);
-                    continue;
-                }
-
-                if (c == '\n')
-                {
-                    ////////
-                    if (isReadingNumeral)
-                    {
-                        _temp_line_constant += stod(buffer);
-                        _temp_column.push_back(_temp_line_constant);
-                        matrix.push_back(_temp_line_coefficient);
-
-                        _temp_line_constant = 0.0;
-                        _temp_line_coefficient.clear();
-                        proposition.clear();
-                    }
-                    else
-                        throw GLOBAL_ERROR_NO_CONSTANT_ON_RIGHT;
-                    continue;
-                }
-
                 if (isReadingNumeral)
                 {
-                    proposition.push_back(Data(- 1, stod(buffer)));
+                    proposition.push_back(Data(-1, stod(buffer)));
                     buffer = "";
+                    isReadingNumeral = false;
                 }
 
                 if (isReadingVariable)
@@ -111,7 +87,7 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
                         variable_name.push_back(buffer);
                     }
                     proposition.push_back(Data(varialbes_map[buffer], 1.0));
-
+                    isReadingVariable = false;
                     buffer = "";
                 }
 
@@ -124,18 +100,39 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
                     cOperators.pop();
                 }
 
-                if (c == '#')
+                if (c == '=')
                 {
+                    _temp_line_coefficient.resize(curSize, 0);
+                    Propos_Com_Variables(proposition, _temp_line_coefficient, _temp_line_constant, false);
+                    proposition.resize(0);
+                    break;
+                }
+
+                if (c == '\n' || c == '#')
+                {
+                    ////////
+                    Propos_Com_Variables(proposition, _temp_line_coefficient, _temp_line_constant, true);
+                    _temp_column.push_back(_temp_line_constant);
+                    matrix.push_back(_temp_line_coefficient);
+
+                    _temp_line_constant = 0.0;
+                    _temp_line_coefficient.resize(0);
+                    proposition.resize(0);
+
                     break;
                 }
 
                 cOperators.push(c);
-                continue;
+                break;
             }
         }
-        buffer += c;
-        if (_stream->peek() == EOF)
-            c = '#';
+        if (!_stream->get(c))
+        {
+            if (c != '#')
+                c = '#';
+            else
+                break;
+        }
     }
     if (matrix.size() != curSize)
         throw GLOBAL_ERROR_INCORRECT_NUMBER_OF_EQUATION;
@@ -146,14 +143,14 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
     }
 }
 template <typename _Type>
-void StreamProcessor<_Type>::Propos_Com_Variables(vector<Data> *_pros, vector<_Type> *_output, _Type *_output_constant)
+void StreamProcessor<_Type>::Propos_Com_Variables(vector<Data> &_pros, vector<_Type> &_output, _Type &_output_constant, bool rev)
 {
     //reckon _output_constant == 0.0
     stack<int> s;
-    int _max = _pros->size();
+    int _max = _pros.size();
     for (int i = 0; i < _max; ++i)
     {
-        if (_pros->operator[](i)._index >=-1)
+        if (_pros[i]._index >= -1)
         {
             s.push(i);
         }
@@ -166,43 +163,43 @@ void StreamProcessor<_Type>::Propos_Com_Variables(vector<Data> *_pros, vector<_T
             s.pop();
             tempA = s.top();
             s.pop();
-            tempA_index = _pros->operator[](tempA)._index;
-            tempB_index = _pros->operator[](tempB)._index;
-            c = 2 - _pros->operator[](i)._index;
+            tempA_index = _pros[tempA]._index;
+            tempB_index = _pros[tempB]._index;
+            c = (int)_pros[i]._value;
             switch (c)
             {
             case '+':
                 if (tempA_index == tempB_index)
                 {
-                    _pros->operator[](tempA)._value += _pros->operator[](tempB)._value;
+                    _pros[tempA]._value += _pros[tempB]._value;
                     s.push(tempA);
                 }
                 else if (tempA_index < 0)
                 {
-                    _pros->operator[](tempB).push_index(tempA);
+                    _pros[tempB].push_index(tempA);
                     s.push(tempB);
                 }
                 else
                 {
-                    _pros->operator[](tempA).push_index(tempB_index);
+                    _pros[tempA].push_index(tempB);
                     s.push(tempA);
                 }
                 break;
             case '-':
                 if (tempA_index == tempB_index)
                 {
-                    _pros->operator[](tempA)._value -= _pros->operator[](tempB)._value;
+                    _pros[tempA]._value -= _pros[tempB]._value;
                     s.push(tempA);
                 }
                 else if (tempA_index < 0)
                 {
-                    _pros->operator[](tempB)._value = -_pros->operator[](tempB)._value;
-                    _pros->operator[](tempB).push_index(tempA);
+                    _pros[tempB]._value = -_pros[tempB]._value;
+                    _pros[tempB].push_index(tempA);
                     s.push(tempB);
                 }
                 else
                 {
-                    _pros->operator[](tempA).push_index(tempB_index);
+                    _pros[tempA].push_index(tempB);
                     s.push(tempA);
                 }
                 break;
@@ -211,19 +208,19 @@ void StreamProcessor<_Type>::Propos_Com_Variables(vector<Data> *_pros, vector<_T
                 {
                     if (tempA_index >= 0)
                         throw GLOBAL_ERROR_VARIABLE_TIMES_VARIABLE;
-                    _pros->operator[](tempA)._value *= _pros->operator[](tempB)._value;
+                    _pros[tempA]._value *= _pros[tempB]._value;
                     s.push(tempA);
                 }
                 else if (tempA_index < 0)
                 {
-                    _pros->operator[](tempB)._value *= _pros->operator[](tempA)._value;
+                    _pros[tempB]._value *= _pros[tempA]._value;
                     s.push(tempB);
                 }
                 else
                 {
                     if (tempB_index >= 0)
                         throw GLOBAL_ERROR_VARIABLE_TIMES_VARIABLE;
-                    _pros->operator[](tempA)._value *= _pros->operator[](tempB)._value;
+                    _pros[tempA]._value *= _pros[tempB]._value;
                     s.push(tempA);
                 }
                 break;
@@ -232,19 +229,19 @@ void StreamProcessor<_Type>::Propos_Com_Variables(vector<Data> *_pros, vector<_T
                 {
                     if (tempA_index >= 0)
                         throw GLOBAL_ERROR_VARIABLE_TIMES_VARIABLE;
-                    _pros->operator[](tempA)._value /= _pros->operator[](tempB)._value;
+                    _pros[tempA]._value /= _pros[tempB]._value;
                     s.push(tempA);
                 }
                 else if (tempA_index < 0)
                 {
-                    _pros->operator[](tempB)._value /= _pros->operator[](tempA)._value;
+                    _pros[tempB]._value /= _pros[tempA]._value;
                     s.push(tempB);
                 }
                 else
                 {
                     if (tempB_index >= 0)
                         throw GLOBAL_ERROR_VARIABLE_TIMES_VARIABLE;
-                    _pros->operator[](tempA)._value /= _pros->operator[](tempB)._value;
+                    _pros[tempA]._value /= _pros[tempB]._value;
                     s.push(tempA);
                 }
                 break;
@@ -254,27 +251,57 @@ void StreamProcessor<_Type>::Propos_Com_Variables(vector<Data> *_pros, vector<_T
     //get coefficient
     static int ceil, id;
     static double t;
-    while (s.size())
+    if (rev)
     {
-        Data tempData = _pros->operator[](s.top());
-        s.pop();
-        t = tempData._value;
-        id = tempData._index;
-        if(id>=0)
+        while (s.size())
         {
-            _output[id] += t;
-            ceil = tempData.neighborTable->size();
-            for (int i = 0; i < _max;++i)
+            Data tempData = _pros[s.top()];
+            s.pop();
+            t = tempData._value;
+            id = tempData._index;
+            if (id >= 0)
             {
-                static int temp;
-                temp = tempData.neighborTable->operator[](i);
-                _pros->operator[](temp)._value *= t;
-                s.push(temp);
+                _output[id] -= t;
+                if (!tempData.neighborTable)
+                    continue;
+                ceil = tempData.neighborTable->size();
+                for (int i = 0; i < ceil; ++i)
+                {
+                    static int temp;
+                    temp = tempData.neighborTable->operator[](i);
+                    _pros[temp]._value *= t / tempData.neighborCo->operator[](i);
+                    s.push(temp);
+                }
             }
+            else
+                _output_constant += t;
         }
-        else
-            *_output_constant -= t;
     }
+    else
+        while (s.size())
+        {
+            Data tempData = _pros[s.top()];
+            s.pop();
+            t = tempData._value;
+            id = tempData._index;
+            if (id >= 0)
+            {
+                _output[id] += t;
+                if (!tempData.neighborTable)
+                    continue;
+                ceil = tempData.neighborTable->size();
+                for (int i = 0; i < ceil; ++i)
+                {
+                    static int temp;
+                    temp = tempData.neighborTable->operator[](i);
+                    _pros[temp]._value *= t / tempData.neighborCo->operator[](i);
+                    s.push(temp);
+                }
+            }
+            else
+                _output_constant -= t;
+            tempData.neighborTable = nullptr;
+        }
 }
 
 template <typename _Type>
@@ -285,15 +312,18 @@ int StreamProcessor<_Type>::isp(const char &_c) const
     case '#':
         return INT_MIN;
     case '(':
-        return 0;
+        return 2;
     case ')':
-        return 6;
+        return 8;
+    case '=':
+    case '\n':
+        return 1;
     case '+':
     case '-':
-        return 2;
+        return 4;
     case '*':
     case '/':
-        return 4;
+        return 6;
     }
     return -1;
 }
@@ -305,15 +335,18 @@ int StreamProcessor<_Type>::icp(const char &_c) const
     case '#':
         return INT_MIN;
     case '(':
-        return 6;
+        return 8;
     case ')':
-        return 0;
+        return 2;
+    case '=':
+    case '\n':
+        return 1;
     case '+':
     case '-':
-        return 1;
+        return 3;
     case '*':
     case '/':
-        return 3;
+        return 5;
     }
     return -1;
 }
