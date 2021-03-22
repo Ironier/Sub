@@ -52,7 +52,7 @@ private:
 
 public:
     vector<vector<_Type>> matrix;
-    vector<string> variable_name;
+    vector<string> variables_name;
 
     StreamProcessor() = default;
 

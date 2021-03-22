@@ -1,10 +1,7 @@
 #include "include/Standard_Output.h"
 
-#include <iostream>
-#include <vector>
 #include <stack>
 #include <unordered_map>
-#include <string>
 
 using namespace std;
 
@@ -14,20 +11,21 @@ using namespace std;
 template <typename _Type>
 void StreamProcessor<_Type>::Process(iostream *_stream)
 {
-    variable_name.clear();
+    variables_name.clear();
+    variables_name.reserve(0);
     matrix.clear();
+    matrix.reserve(0);
 
     stack<char> cOperators;
     cOperators.push('#');
 
-    unordered_map<string, int> varialbes_map;
-    int curSize = 0;
+    unordered_map<string, int> variables_map;
 
     vector<Data> proposition; // >=0? =>variable : <0? => (-proposition[i] - 1) is the original operation
 
     char c = 0;
     string buffer;
-    _Type _temp_line_constant;
+    _Type _temp_line_constant = 0.0;
     vector<_Type> _temp_column, _temp_line_coefficient;
 
     bool isReadingVariable = false, isReadingNumeral = false;
@@ -81,12 +79,12 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
 
                 if (isReadingVariable)
                 {
-                    if (varialbes_map.find(buffer) == varialbes_map.end())
+                    if (variables_map.count(buffer) == 0)
                     {
-                        varialbes_map[buffer] = curSize++;
-                        variable_name.push_back(buffer);
+                        variables_map[buffer] = variables_name.size();
+                        variables_name.push_back(buffer);
                     }
-                    proposition.push_back(Data(varialbes_map[buffer], 1.0));
+                    proposition.push_back(Data(variables_map[buffer], 1.0));
                     isReadingVariable = false;
                     buffer = "";
                 }
@@ -102,22 +100,28 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
 
                 if (c == '=')
                 {
-                    _temp_line_coefficient.resize(curSize, 0);
+                    _temp_line_coefficient.resize(variables_name.size(), 0);
                     Propos_Com_Variables(proposition, _temp_line_coefficient, _temp_line_constant, false);
-                    proposition.resize(0);
+                    proposition.clear();
+                    proposition.reserve(0);
                     break;
                 }
 
                 if (c == '\n' || c == '#')
                 {
                     ////////
+                    if (proposition.size() == 0)
+                        break;
+
                     Propos_Com_Variables(proposition, _temp_line_coefficient, _temp_line_constant, true);
                     _temp_column.push_back(_temp_line_constant);
                     matrix.push_back(_temp_line_coefficient);
 
                     _temp_line_constant = 0.0;
-                    _temp_line_coefficient.resize(0);
-                    proposition.resize(0);
+                    _temp_line_coefficient.clear();
+                    _temp_line_coefficient.reserve(0);
+                    proposition.clear();
+                    proposition.reserve(0);
 
                     break;
                 }
@@ -126,6 +130,10 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
                 break;
             }
         }
+        /*if (variables_name.size() == 1001)
+        {
+            return;
+        }*/
         if (!_stream->get(c))
         {
             if (c != '#')
@@ -134,11 +142,12 @@ void StreamProcessor<_Type>::Process(iostream *_stream)
                 break;
         }
     }
-    if (matrix.size() != curSize)
+    int s1 = matrix.size(), s2 = variables_name.size();
+    if (s1 != s2)
         throw GLOBAL_ERROR_INCORRECT_NUMBER_OF_EQUATION;
-    for (int i = 0; i < curSize; ++i)
+    for (int i = 0; i < _temp_column.size(); ++i)
     {
-        matrix[i].resize(curSize, 0);
+        matrix[i].resize(variables_name.size(), 0);
         matrix[i].push_back(_temp_column[i]);
     }
 }

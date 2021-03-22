@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <fstream>
 #include <sstream>
 
 #include "include/process.h"
@@ -10,9 +11,11 @@ signed main()
 {
     try
     {
-        stringstream ss("2.13*x+3*3.33*y=10*2+3\n3*x+4*y=11");
+        fstream ss("random.txt");
+        //stringstream ss("2*x2+3*y1=0\nx2*3+y1*4=9");
         StreamProcessor<double> p;
         p.Process(&ss);
+        ss.close();
         return 0;
     }
     catch (int ERR)
